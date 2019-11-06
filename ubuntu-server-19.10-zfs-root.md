@@ -52,30 +52,44 @@ Boot the VM using the [Ubuntu Desktop ISO](http://releases.ubuntu.com/19.10/) in
 
 1.2  Setup and update the repositories (Commands):
 ```bash
-sudo apt-add-repository universe
-sudo apt update
+sudo apt-add-repository universe && apt update
 ```
 1.3  Optional: If testing on a VM, it's useful to use a remote SSH connection to continue with this guide. If following the remote SSH installation senario, SSH will already be in use. Set a password for the `ubuntu` user
 
 ```bash
 passwd
-There is no current password; hit enter at that prompt.
 sudo apt install --yes openssh-server
 ```
 Edit `/etc/ssh/sshd_config` to enable `PasswordAuthentication` by uncommenting and the restarting the SSH unit in systemd.
 ```bash
-vi /etc/ssh/sshd_config
+sudo vi /etc/ssh/sshd_config
 systemctl restart sshd
 ```
 
-**Hint:** You can find your IP address with `ip addr show scope global | grep inet`.  Then, from your main machine, connect with `ssh ubuntu@IP`.
+**Hint:** The IP address can be located with 
+```
+ip addr show scope global | grep inet
+```
+Connect from a terminal. 
+```
+ssh ubuntu@IP
+```
+If there a public key errors, force password authentication.
+```
+ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no ubuntu@IP
+```
 
-1.4 Elevate to root.
+1.4 **Optional**: If a non-standard terminal emulator is used, copy terminfo from the ubuntu user folder.
+```
+sudo cp -r .terminfo/ /root
+```
+
+1.5 Elevate to root.
 ```bash
 sudo -i
 ```
 
-1.5  Install ZFS in the Ubuntu Live environment:
+1.6  Install ZFS in the Ubuntu Live environment:
 ```bash
 apt install --yes debootstrap gdisk zfs-initramfs zfsutils-linux
 ```
@@ -210,7 +224,7 @@ You can adjust the size (the `2G` part) to your needs.
 zfs create -V 2G -b 4096 -o compression=zle -o logbias=throughput -o sync=always -o primarycache=metadata -o secondarycache=none -o com.sun:auto-snapshot=false ubuntu/swap
 # mark it as swap
 mkswap -f /dev/zvol/ubuntu/swap
-echo RESUME=none > /etc/initramfs-tools/conf.d/resume
+swapoff -a
 ```
 
 4.3 Check mountings and remount with dev enabled.
@@ -220,7 +234,7 @@ echo RESUME=none > /etc/initramfs-tools/conf.d/resume
 # check the mount flags
 mount -l | grep -e ubuntu -e boot
 # remount with dev option
-mount -i -o remount,exec,dev boot/bios
+mount -i -o remount,dev boot/bios
 ```
 
 4.4 Check that all the datasets are mounted correctly
@@ -248,7 +262,7 @@ If any of the non-container datasets appear as not mounted, mount them.
 ```bash
 # a specific set
 zfs mount ubuntu/var/lib
-# mount all, not ubuntu/root needs to be mounted before boot/bios
+# mount all, ubuntu/root needs to be mounted before boot/bios and other ubuntu datasets
 zfs mount -a
 ```
 
@@ -256,7 +270,7 @@ zfs mount -a
 
 5.1 Ensure `debootstrap` is installed and then run it targeting `eoan` and `/mnt`.
 ```bash
-apt install --yes+ debootstrap
+apt install --yes debootstrap
 debootstrap eoan /mnt
 zfs set devices=off ubuntu
 ```
@@ -276,8 +290,7 @@ vi /mnt/etc/hosts
 6.3 Networking. Get the interface name, configure netplan yaml.
 ```bash
 ip addr show
-cd /mnt/etc/netplan/
-vi 01-network.yaml
+vi /mnt/etc/netplan/01-network.yaml
 ```
 Content may need to be configured with a static address, check the local netplan config for an existing server and copy the netplan config across from `/etc/netplan/01-netplan.yaml` to `/mnt/etc/netplan`. For a simple DHCP config, it should read be as follows.
 ```yaml
@@ -348,15 +361,19 @@ dpkg-reconfigure --frontend noninteractive locales
 dpkg-reconfigure tzdata
 ```
 
-7.4 Install zfs-initramfs & generic linux kernel.
+7.4 Install zfs tools
 ```bash
 apt install --yes zfs-initramfs zfsutils-linux
+```
+
+7.5 Install generic kernel
+```bash
 apt install --yes --no-install-recommends linux-image-generic
 ```
 
-7.5 Create the ZFS import service for `boot` dataset
+7.6 Create the ZFS import service for `boot` dataset
 
-7.5.1 Add a zfs import systemd unit file for import on boot.
+7.6.1 Add a zfs import systemd unit file for import on boot.
 
 ```bash
 vi /etc/systemd/system/zfs-import-boot.service
@@ -377,21 +394,20 @@ ExecStart=/sbin/zpool import -N -o cachefile=none boot
 WantedBy=zfs-import.target
 ```
 
-7.5.2 Enable the systemd unit
+7.6.2 Enable the systemd unit
 ```
 systemctl enable zfs-import-boot.service
 ```
 
-7.6 Add system groups
+7.7 Add system groups
 ```
 addgroup --system lpadmin
 addgroup --system sambashare
 ```
 
+7.8 Configure fstab & grub
 
-7.6 Configure fstab & grub
-
-7.6.1 Convert datasets to legacy for boot compatability, add mounts to fstab.
+7.8.1 Convert datasets to legacy for boot compatability, add mounts to fstab.
 ```bash
 # for boot dataset
 zfs set mountpoint=legacy boot/bios
@@ -405,8 +421,10 @@ echo ubuntu/var/spool /var/spool zfs nodev,relatime 0 0 >> /etc/fstab
 zfs set mountpoint=legacy ubuntu/tmp
 echo ubuntu/tmp /tmp zfs nodev,relatime 0 0 >> /etc/fstab
 echo /dev/zvol/ubuntu/swap none swap discard 0 0 >> /etc/fstab
+# add resume option for swap
+echo RESUME=none > /etc/initramfs-tools/conf.d/resume
 ```
-7.6.2 Install grub, but *don't install to disk* yet when prompted.
+7.8.2 Install grub, but *don't install to disk* yet when prompted. Don't make any selections and just enter on OK, then yes.
 
 ```bash
 apt install --yes grub-pc
@@ -418,7 +436,7 @@ vi /etc/default/grub
 
 Edit `grub` file contents, add/uncomment/comment lines as required. These are set for diagnostic values.
 ```ini
-GRUB_CMDLINE_LINUX="root=ZFS=rpool/ROOT/ubuntu"
+GRUB_CMDLINE_LINUX="root=ZFS=ubuntu/root"
 #GRUB_TIMEOUT_STYLE=hidden
 GRUB_TIMEOUT=5
 GRUB_RECORDFAIL_TIMEOUT=5
@@ -426,37 +444,37 @@ GRUB_CMDLINE_LINUX_DEFAULT=""
 GRUB_TERMINAL=console
 ```
 
-7.6.3 Check grub sees `/boot` as `zfs`.
+7.8.3 Check grub sees `/boot` as `zfs`.
 ```bash
 grub-probe /boot
 ```
 
-7.6.4 Update initramfs to add link for kernel in `/boot`.
+7.8.4 Update initramfs to add link for kernel in `/boot`.
 ```bash
 update-initramfs -u -k all
 ```
 
-7.6.5 Install grub to disk.
+7.8.5 Install grub to disk.
 ```bash
 grub-install /dev/disk/by-id/${DISK_ID}
 ```
 
-7.6.6 Update grub, it should find the kernel linked by initramfs. If it does not list the kernel here, something is wrong. Go back & figure out where it went wrong. *Ignore* the probe error here.
+7.8.6 Update grub, it should find the kernel linked by initramfs. If it does not list the kernel here, something is wrong. Go back & figure out where it went wrong. *Ignore* the probe error here.
 ```bash
 update-grub
 ```
-7.6.7 Check zfs is present in /boot/grub, do not continue if files are not found.
+7.8.7 Check zfs is present in /boot/grub, do not continue if files are not found.
 ```bash
 ls /boot/grub/*/zfs.mod
 ```
 
-7.7 Install SSH on the new server
+7.9 Install SSH on the new server
 
 It's important that this is working correctly in the remote SSH install senario
 It's best practice to create a user first and then configure authorized_keys. If you're feeling brave and didn't add a user first, then allow root login with password temporarily in `sshd_config`.
 
 ```bash
-apt install ssh
+apt install --yes ssh
 vi /etc/ssh/sshd_config
 ```
 Uncomment and edit the following in `sshd_config` if you will login via password with the root user. If you are logging in with a created user, do not uncomment `PermitRootLogin`.
@@ -466,12 +484,8 @@ Uncomment and edit the following in `sshd_config` if you will login via password
 PermitRootLogin yes
 PasswordAuthentication yes
 ```
-Double check that SSH is enabled on start-up.
-```bash
-systemctl enable sshd
-```
 
-7.8 Configure root password.
+7.10 Configure root password.
 ```bash
 passwd
 ```
@@ -483,16 +497,36 @@ passwd
 zfs snapshot boot/bios@install
 zfs snapshot ubuntu/root@install
 ```
+
+*** Need to umount legacy fses, figure out if any file locks exist inside chroot.
+
+
 8.2 Exit the `chroot` environment returning to the Ubuntu Live environment.
 ```bash
+#umount legacy first
+sudo umount /boot
+sudo umount /var/log
+sudo umount /var/spool
+sudo umount /tmp # this shouldn't be mountd
 exit
 ```
 8.3 Unmount all filesystems created.
 **Important**: If any zpools are not exported, they will fail to import on boot. In the remote SSH installation senario, this will leave you in a non-recoverable state. It's important that both pools are unmounted correctly.
 ```bash
-mount | grep -v zfs | tac | awk '/\/mnt/ {print $3}' | xargs -i{} umount -lf {}
-zpool export -a
+for mnt in dev sys proc; do
+  umount --recursive --force --lazy /mnt/$mnt
+done
+sudo zfs unmount -a
+sudo umount ubuntu/root
+zpool export boot
+zpool export ubuntu
 ```
+If you get an device busy error on umount of `ubuntu`, kill all processes to release the pool. [This is fine, right?]
+```
+for p in $(sudo ps -ef | grep -v -e PID -e '\[' -e init -e sshd -e bash | awk '{print $2}'); do sudo kill $p; done
+zpool export ubuntu
+```
+
 8.4 Cross phalanges, it's time to reboot.
 ```bash
 reboot
@@ -504,7 +538,7 @@ Wait for the newly installed system to boot normally. Login as root.
 
 9.1  Create a user account:
 ```bash
-zfs create rpool/home/${USERNAME}
+zfs create ubuntu/home/${USERNAME}
 adduser ${USERNAME}
 cp -a /etc/skel/. /home/${USERNAME}
 chown -R ${USERNAME}:${USERNAME} /home/${USERNAME}
