@@ -1,4 +1,4 @@
-# Ubuntu 19.10 Root on ZFS
+# Ubuntu Server 19.10 ZFS Root
 
 ## 0. Important Information
 
