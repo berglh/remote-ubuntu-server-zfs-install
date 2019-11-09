@@ -2,7 +2,7 @@
 
 This repository contains a set of three guides to remotely reinstall a server where the only access to the server is via SSH. This can be the case with leased dedicated servers in data centres or remote customer servers without any remote console access (iDRAC/hILO/etc.).
 
-It also includes guides on installing Ubuntu Server with a ZFS (0.80) root filesystem along with a guide on creating an encrypted data pool for securely storing data on your remote server.
+It also includes instructions on installing Ubuntu Server with a ZFS (0.80) root filesystem and a guide on creating an encrypted data pool for securely storing data on the remote server.
 
 1. [Ubuntu Server Remote SSH Reinstall](ubuntu-server-remote-ssh-installation.md)
 2. [Ubuntu Server 19.10 on ZFS Root File System](ubuntu-server-19.10-zfs-root.md)
@@ -11,14 +11,14 @@ It also includes guides on installing Ubuntu Server with a ZFS (0.80) root files
 ## Disclaimers
 
 ### 1: Regarding Data Loss
-These guides are intended as a reference only and it's entirely possible that it will result in data loss if necessary precautions are not taken before hand, such as a full system back-up. I am not responsible for any errors in this guide that may result in the loss of your data.
+These guides are intended as a reference only and it's entirely possible that it will result in data loss if necessary precautions are not taken beforehand, such as a full system back-up. I am not responsible for any errors in this guide that may result in the loss of your data.
 
-It's recommended to experiment with this process in virtual machines before hand to emulate your exact senarios before doing this on prodcution systems.
+It's recommended to experiment with these procedures in virtual machines beforehand to emulate your exact scenarios in preparation to performing them on production systems.
 
 ### 2: Regarding ZFS Root File System
 There are performance penalties with using ZFS as a root file system, particularly with respects to single disk systems. A lot of the benefits of ZFS integrity are lost in this configuration. 
 
-That being said, the use of ZFS snapshots and native enrcyption may be of benefit. If maximum performance is the desire, stick to ext4/xfs root partitions and LUKS encryption. Also consider btrfs which is becoming a more suitable option with a similar feature set to ZFS.
+That being said, the use of ZFS snapshots and native encryption may be of benefit. If maximum performance is the desire, stick to ext4/xfs root partitions and LUKS encryption. Also consider btrfs which is becoming a more suitable option with a similar feature set to ZFS.
 
 ### 3: Regarding UEFI installations
 These guides to not cover any instructions for UEFI systems. Please find instructions for these in the References below. The general process of this Ubuntu Server 19.10 on ZFS Root guide is still an improvement on previous ZFS Root guides in terms of order of operation, so keep it in mind when following some of the older guides below.
@@ -28,7 +28,7 @@ These guides are provided as is without any official support channels. If you re
 
 ## Thanks & References
 
-A big thank you to all the authors of the following guides that were followed for this particular collection.
+Thank-you to the authors of the following guides that sourced the methods used in this series.
 
 ### 1: Remote Installation
 - [Ubuntu OverSSH Reinstallation](https://gitlab.com/aasaam/ubuntu-overssh-reinstallation/tree/master) by aasam

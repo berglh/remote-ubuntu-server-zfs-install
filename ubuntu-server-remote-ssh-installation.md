@@ -12,9 +12,9 @@ This guide demonstrates how to reinstall a Linux server remotely only via a SSH 
 
 It is possible to find yourself in one the following situation:
 
-- You have leased a dedicated server or a virtual machine in a data center. You do not have physical, VM console or remote console access(iDRAC/hILO/etc). The only options for a regular reinstallation are via web administration console with a set of pre-prepared automated installations, disk formatting via restrictive options in web forms and perhaps many releases older than you wish to use.
+- You have leased a dedicated server or a virtual machine in a data center. You do not have physical, VM console or remote console access(iDRAC/hILO/etc). The only options for a regular re-installation are via web administration console with a set of pre-prepared automated installations, disk formatting via restrictive options in web forms and perhaps many releases older than you wish to use.
 - You may wish to install [Ubuntu Server on ZFS Root File System](ubuntu-server-19.10-zfs-root.md) where the version of ZFS are not directly available in the ISOs available to you.
-- You do not trust the source ISOs and hosted custom kernels and wish to clear the system to a more trusted state. This won't completly disable all possible firmware based observations of your operating systems, but it should reduce the observability of your system with foreign kernels/monitoring packages.
+- You do not trust the source ISOs and hosted custom kernels and wish to clear the system to a more trusted state. This won't completely disable all possible firmware based observations of your operating systems, but it should reduce the observability of your system with foreign kernels/monitoring packages.
 - You have not upgraded your Ubuntu non-LTS distribution within the support window and you wish to reinstall your remote server with the ability of keeping your configuration and data around 
 - You want to do something difficult and off the beaten track for a learning experience.
 
@@ -22,7 +22,7 @@ Whatever the reason, it is possible to complete a system re-installation via onl
 
 ### 0.2 Requirements
 
-This guide will assume that the target server is running an older version of Ubuntu, this guide will use  a Ubuntu Server 16.04 LTS server as demonstration. It is possible to perform this reinstallation on CentOS like systems using the `deboostrap` package as [outlined here](https://linuxconfig.org/how-to-debootstrap-on-centos-linux). The following assumptions are made:
+This guide will assume that the target server is running an older version of Ubuntu, this guide will use  a Ubuntu Server 16.04 LTS server as demonstration. It is possible to perform this re-installation on CentOS like systems using the `deboostrap` package as [outlined here](https://linuxconfig.org/how-to-debootstrap-on-centos-linux). The following assumptions are made:
 
 1. Functioning server with remote SSH and root account access.
 2. No full disk-encryption, it's not possible to enter the decryption password of a root partition via SSH only.
@@ -32,7 +32,7 @@ A typical non-LVM partition schema is used in this guide. It should be possible 
 
 ### 0.3 Testing with a Virtual Machine
 
-If trying out this method and for compatability with the additional Ubuntu Root on ZFS guide using KVM/QEMU, best results are found using BIOS firmware instead of UEFI. It's possible to adopt this method using the UEFI approaches used elsewhere in other guides
+If trying out this method and for compatibility with the additional Ubuntu Root on ZFS guide using KVM/QEMU, best results are found using BIOS firmware instead of UEFI. It's possible to adopt this method using the UEFI approaches used elsewhere in other guides
 
 Virtual Machine Manager is a graphical approach to testing this with KVM.
 
@@ -52,14 +52,15 @@ apt-get install qemu virt-manager
 
 In order to be able to repartition and format the existing partitions used by the current installation, a temporary installation onto the swap partition is required. This will allow booting of the server from the swap partition to complete the changes to the existing system volumes.
 
-### 1.1 Login to the server
+1.1 Login to the server
 
 Connect to the remote server using SSH and elevate to a root prompt:
 ```bash
 ssh username@server-addresss
 sudo -i
 ```
-### 1.2 Check the disk layout
+1.2 Check the disk layout
+
 1.2.1 Show the partition layout
 ```bash
 fdisk -l
@@ -87,17 +88,17 @@ The swap is currently online on the partition at the end of the disk
 Filename           Type            Size     Used    Priority
 /dev/vda5          partition       1998844  0       -1
 ```
-### 1.3 Stop any large service/daemons to a mininal server state
+1.3 Stop any large service/daemons to a mininal server state
 ```bash
 docker stop mysql lychee
 systemctl stop nginx docker postgresql
 ```
-### 1.4 Disable swap
+1.4 Disable swap
 ```bash
 swapoff -a
 swapon -s        # this should return no output
 ```
-### 1.5 Change the swap partition to Linux type
+1.5 Change the swap partition to Linux type
 ```bash
 fdisk -l         # confirm the device path of swap
 fdisk /dev/vda   # launch fdisk on the disk device
@@ -106,12 +107,12 @@ t                # type t to change the partition type
 83               # change partition to Linux type
 w                # write changes and exit fdisk
 ```
-### 1.6 Format the swap partition as ext4
+1.6 Format the swap partition as ext4
 ```bash
 mkfs.ext4 -j /dev/vda5
 y                # proceed even though the filesystem was swap
 ```
-### 1.7 Mount the formated partition
+1.7 Mount the formated partition
 ```bash
 mount /dev/vda5 /mnt
 mount -l
@@ -123,20 +124,20 @@ The device should appear at the end of the `mount` command output
 ```
 ## 2: Installing Ubuntu on Swap partition
 
-### 2.1 Install debootstrap
+2.1 Install debootstrap
 If there is an OS other than Ubuntu/Debian on the server and the desire is to move to Ubuntu, find a method for installing `debootstrap` in the current distribution. Otherwise, install `debootstrap` using `apt`.
 ```
 apt install --yes debootstrap
 ```
-### 2.2 Install Ubuntu 19.10 (eoan)
+2.2 Install Ubuntu 19.10 (eoan)
 
 This guide is targeting `eaon` for `zfs v0.80` support, this could be any other Ubuntu release that is currently supported.
 ```
 /usr/sbin/debootstrap --arch amd64 eoan /mnt
 ```
-### 3: Configure the Install
+## 3: Configure the Install
 
-3.1 Configure hostname, change `ubuntu` to the deisred name.
+3.1 Configure hostname, change `ubuntu` to the desired name.
 ```bash
 echo ubuntu > /mnt/etc/hostname
 ```
@@ -182,7 +183,7 @@ Content may need to be configured with a static address depending on the existin
 ```
 less /etc/netplan/01-netplan.yaml
 ```
-If this config looks correct for the system, copy it to the new installation. Then jump to the `3.4 Apt Configuration` setion.
+If this config looks correct for the system, copy it to the new installation. Then jump to the `3.4 Apt Configuration` section.
 ```
 cp /etc/netplan/01-netplan.yaml /mnt/etc/netplan/01-netplan.yaml
 ```
@@ -306,7 +307,7 @@ usermod -aG sudo username
 
 4.8 Install SSH
 
-It's important that this is working correctly in the remote SSH install senario, any misconfiguration will result in the ability to login.
+It's important that this is working correctly in the remote SSH install scenario, any misconfiguration will result in the ability to login.
 
 It's best practice to create a user first, such as in step `4.6` and then configure `authorized_keys` for login via SSH. If a current SSH public key is not created, stop and create one now. Otherwise, skip `4.8.2` and use password auth with SSH, keep in mind, this is not recommended.
 
@@ -315,8 +316,8 @@ It's best practice to create a user first, such as in step `4.6` and then config
 apt install --yes openssh-server
 ```
 
-4.8.2 Add `authorized_keys` to the perviously created user
-```
+4.8.2 Add `authorized_keys` to the previously created user
+```bash
 mkdir /home/username/.ssh
 # paste a public SSH key into authorized_keys
 vi /home/username/.ssh/authorized_keys
@@ -328,7 +329,7 @@ chown -R username:username /home/username/.ssh
 ```
 
 4.8.3 **Not Recommended**: Skip this if completed `4.7.2`. If not using `authorized_keys`, edit the SSH daemon:
-```
+```bash
 vi /etc/ssh/sshd_config
 ```
 Uncomment and edit the following in `sshd_config` if you will login via password with the root user. If you are logging in with a created user, do not uncomment `PermitRootLogin`.
