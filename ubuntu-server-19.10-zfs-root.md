@@ -178,7 +178,6 @@ zpool create -o ashift=12 \
 ```
 ## 4: ZFS Datasets
 
-
 It's typical to create container datasets for easy snapshotting with ZFS, this guide omits the container datasets and in turn omits easy snapshotting. Refer to previous guides on how to nest the boot and root pools inside of containers available in the references section of the [README](README.md).
 
 With ZFS, it is not normally necessary to use a mount command (either `mount` or `zfs mount`). This situation is an exception because of `canmount=noauto`.
